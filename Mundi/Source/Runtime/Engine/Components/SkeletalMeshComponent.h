@@ -45,6 +45,11 @@ public:
      */
     void ForceRecomputePose();
 
+    /**
+     * @brief 현재 포즈를 BindPose로 초기화 (애니메이션 해제 시 사용)
+     */
+    void ResetToBindPose();
+
 protected:
 
     /**

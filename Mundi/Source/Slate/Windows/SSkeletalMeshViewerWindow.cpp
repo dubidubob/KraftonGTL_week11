@@ -569,8 +569,23 @@ void SSkeletalMeshViewerWindow::OnRender()
 
                 if (ImGui::Selectable(ActiveState->AnimationNames[i].c_str(), bSelected))
                 {
-                    if (ActiveState->SelectedAnimIndex != i)
+                    if (ActiveState->SelectedAnimIndex == i)
                     {
+                        // 같은 애니메이션 다시 클릭 시 해제
+                        ActiveState->SelectedAnimIndex = -1;
+                        ActiveState->bIsAnimPlaying = false;
+                        ActiveState->CurrentAnimTime = 0.0f;
+
+                        // BindPose로 복원
+                        if (ActiveState->PreviewActor && ActiveState->PreviewActor->GetSkeletalMeshComponent())
+                        {
+                            ActiveState->PreviewActor->GetSkeletalMeshComponent()->ResetToBindPose();
+                            ActiveState->bBoneLinesDirty = true;
+                        }
+                    }
+                    else
+                    {
+                        // 다른 애니메이션 선택
                         ActiveState->SelectedAnimIndex = i;
                         ActiveState->CurrentAnimTime = 0.0f;
                         ActiveState->bIsAnimPlaying = false;
@@ -1076,6 +1091,13 @@ void SSkeletalMeshViewerWindow::RenderAnimationSection(ViewerState* State)
     {
         State->bIsAnimPlaying = false;
         State->CurrentAnimTime = 0.0f;
+
+        // BindPose로 복원
+        if (State->PreviewActor && State->PreviewActor->GetSkeletalMeshComponent())
+        {
+            State->PreviewActor->GetSkeletalMeshComponent()->ResetToBindPose();
+            State->bBoneLinesDirty = true;
+        }
     }
 
     ImGui::PopStyleColor(3);

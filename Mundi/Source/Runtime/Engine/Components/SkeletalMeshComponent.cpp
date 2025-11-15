@@ -174,6 +174,36 @@ void USkeletalMeshComponent::UpdateFinalSkinningMatrices()
     }
 }
 
+void USkeletalMeshComponent::ResetToBindPose()
+{
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshData())
+        return;
+
+    const FSkeleton& Skeleton = SkeletalMesh->GetSkeletalMeshData()->Skeleton;
+    const int32 NumBones = Skeleton.Bones.Num();
+
+    for (int32 i = 0; i < NumBones; ++i)
+    {
+        const FBone& ThisBone = Skeleton.Bones[i];
+        const int32 ParentIndex = ThisBone.ParentIndex;
+        FMatrix LocalBindMatrix;
+
+        if (ParentIndex == -1) // 루트 본
+        {
+            LocalBindMatrix = ThisBone.BindPose;
+        }
+        else // 자식 본
+        {
+            const FMatrix& ParentInverseBindPose = Skeleton.Bones[ParentIndex].InverseBindPose;
+            LocalBindMatrix = ThisBone.BindPose * ParentInverseBindPose;
+        }
+        // 계산된 로컬 행렬을 로컬 트랜스폼으로 변환
+        CurrentLocalSpacePose[i] = FTransform(LocalBindMatrix);
+    }
+
+    ForceRecomputePose();
+}
+
 //Animation Helper
 void USkeletalMeshComponent::PlayAnimation(UAnimationAsset* NewAnimToPlay, bool bLooping)
 {
