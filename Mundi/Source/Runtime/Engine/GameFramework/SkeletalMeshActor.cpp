@@ -135,6 +135,11 @@ void ASkeletalMeshActor::RebuildBoneLines(int32 SelectedBoneIndex)
     {
         UpdateBoneSubtreeTransforms(SelectedBoneIndex);
     }
+    else if (BoneCount > 0)
+    {
+        // 본이 선택 안 되어있을 때는 루트부터 전체 업데이트 (애니메이션 재생 시)
+        UpdateBoneSubtreeTransforms(0);
+    }
 }
 
 void ASkeletalMeshActor::RepositionAnchorToBone(int32 BoneIndex)

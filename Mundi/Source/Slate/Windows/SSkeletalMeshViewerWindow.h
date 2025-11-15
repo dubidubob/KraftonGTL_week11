@@ -71,4 +71,9 @@ private:
     void ApplyBoneTransform(ViewerState* State);
 
     void ExpandToSelectedBone(ViewerState* State, int32 BoneIndex);
+
+    // Animation helpers
+    void FindAnimationsForMesh(ViewerState* State, const FString& MeshPath);
+    void RenderAnimationSection(ViewerState* State);
+    void UpdateAnimationPlayback(ViewerState* State, float DeltaTime);
 };

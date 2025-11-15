@@ -35,11 +35,17 @@ public:
      */
     FTransform GetBoneWorldTransform(int32 BoneIndex);
 
-protected:
+    /**
+     * @brief 애니메이션 뷰어에서 직접 포즈 배열에 접근하기 위한 getter
+     */
+    TArray<FTransform>& GetCurrentLocalSpacePose() { return CurrentLocalSpacePose; }
+
     /**
      * @brief CurrentLocalSpacePose의 변경사항을 ComponentSpace -> FinalMatrices 계산까지 모두 수행
      */
     void ForceRecomputePose();
+
+protected:
 
     /**
      * @brief CurrentLocalSpacePose를 기반으로 CurrentComponentSpacePose 채우기
