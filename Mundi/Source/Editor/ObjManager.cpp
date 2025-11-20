@@ -365,55 +365,11 @@ bool FObjManager::LoadFromCache(const FString& BinPath, const FString& MatBinPat
 
 void FObjManager::Preload()
 {
-	FWideString WDataDir = UTF8ToWide(GDataDir);
-	const fs::path DataDir(WDataDir);
-	const fs::path ContentDir = fs::path(WDataDir).parent_path() / L"Content";
+	FWideString WContentDir = UTF8ToWide(GResourceDir);
+	const fs::path ContentDir(WContentDir);
 
-	// ===== PHASE 1: Cook (.obj → .umesh) =====
-	UE_LOG("=== PHASE 1: Cooking .obj files to .umesh cache ===");
-
-	if (!fs::exists(DataDir) || !fs::is_directory(DataDir))
-	{
-		UE_LOG("ERROR: Data directory not found: %s", WideToUTF8(DataDir.wstring()).c_str());
-		return;
-	}
-
-	size_t CookedCount = 0;
-	std::unordered_set<FString> ProcessedObjFiles;
-
-	for (const auto& Entry : fs::recursive_directory_iterator(DataDir))
-	{
-		if (!Entry.is_regular_file())
-			continue;
-
-		const fs::path& Path = Entry.path();
-		FString Extension = WideToUTF8(Path.extension().wstring());
-		std::transform(Extension.begin(), Extension.end(), Extension.begin(),
-		               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
-		if (Extension == ".obj")
-		{
-			FString PathStr = NormalizePath(WideToUTF8(Path.wstring()));
-
-			if (ProcessedObjFiles.find(PathStr) == ProcessedObjFiles.end())
-			{
-				ProcessedObjFiles.insert(PathStr);
-				if (CookObjToCache(PathStr))
-				{
-					++CookedCount;
-				}
-			}
-		}
-		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
-		{
-			UResourceManager::GetInstance().Load<UTexture>(WideToUTF8(Path.wstring()));
-		}
-	}
-
-	UE_LOG("Cooked %zu .obj files to cache", CookedCount);
-
-	// ===== PHASE 2: Load (.umesh → Resources) =====
-	UE_LOG("=== PHASE 2: Loading .umesh files and creating resources ===");
+	// ===== Load cached .umesh files (Skip cooking phase) =====
+	UE_LOG("=== Loading .umesh files from Content cache ===");
 
 	if (!fs::exists(ContentDir) || !fs::is_directory(ContentDir))
 	{

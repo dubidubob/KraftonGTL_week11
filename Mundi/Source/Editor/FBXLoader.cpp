@@ -45,22 +45,22 @@ void UFbxLoader::PreLoad()
 {
 	UFbxLoader& FbxLoader = GetInstance();
 
-	FWideString WDataDir = UTF8ToWide(GDataDir);
-	const fs::path DataDir(WDataDir);
+	FWideString WContentDir = UTF8ToWide(GResourceDir);
+	const fs::path ContentDir(WContentDir);
 
-	if (!fs::exists(DataDir) || !fs::is_directory(DataDir))
+	if (!fs::exists(ContentDir) || !fs::is_directory(ContentDir))
 	{
-		UE_LOG("UFbxLoader::Preload: Data directory not found: %s", WideToUTF8(DataDir.wstring()).c_str());
+		UE_LOG("UFbxLoader::Preload: Content directory not found: %s", WideToUTF8(ContentDir.wstring()).c_str());
 		return;
 	}
 
 	std::unordered_set<FString> ProcessedFiles; // 중복 로딩 방지
-	TArray<FString> FbxFilePaths; // 모든 FBX 경로 저장
+	TArray<FString> SkelCacheFilePaths; // .uskel 캐시 파일 경로 저장
 
-	// ========== Phase 1: 캐시 생성 ==========
-	UE_LOG("UFbxLoader::Preload - Phase 1: Baking FBX caches...");
+	// ========== 캐시에서 메모리로 로드 (쿡 건너뜀) ==========
+	UE_LOG("UFbxLoader::Preload - Loading from cache to memory (skipping bake)...");
 
-	for (const auto& Entry : fs::recursive_directory_iterator(DataDir))
+	for (const auto& Entry : fs::recursive_directory_iterator(ContentDir))
 	{
 		if (!Entry.is_regular_file())
 			continue;
@@ -69,7 +69,8 @@ void UFbxLoader::PreLoad()
 		FString Extension = WideToUTF8(Path.extension().wstring());
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-		if (Extension == ".fbx")
+		// .uskel 캐시 파일 찾기
+		if (Extension == ".uskel")
 		{
 			FString PathStr = NormalizePath(WideToUTF8(Path.wstring()));
 
@@ -77,31 +78,38 @@ void UFbxLoader::PreLoad()
 			if (ProcessedFiles.find(PathStr) == ProcessedFiles.end())
 			{
 				ProcessedFiles.insert(PathStr);
-				FbxFilePaths.Add(PathStr);
-
-				// 캐시만 생성 (메모리 로드 X)
-				FbxLoader.BakeFbxCacheOnly(PathStr);
+				SkelCacheFilePaths.Add(PathStr);
 			}
-		}
-		else if (Extension == ".dds" || Extension == ".jpg" || Extension == ".png")
-		{
-			UResourceManager::GetInstance().Load<UTexture>(WideToUTF8(Path.wstring())); // 데칼 텍스쳐를 ui에서 고를 수 있게 하기 위해 임시로 만듬.
 		}
 	}
 
-	UE_LOG("UFbxLoader::Preload - Phase 1 completed: %zu FBX caches baked", FbxFilePaths.Num());
-
-	// ========== Phase 2: 캐시에서 메모리로 로드 ==========
-	UE_LOG("UFbxLoader::Preload - Phase 2: Loading from cache to memory...");
-
-	for (const FString& FbxPath : FbxFilePaths)
+	// 캐시에서 메모리로 로드
+	for (const FString& CachePath : SkelCacheFilePaths)
 	{
+		// .uskel 경로에서 원본 .fbx 경로 추론
+		// Content/Resources/BSH.uskel -> Data/BSH.fbx
+		FString FbxPath = CachePath;
+
+		// GResourceDir (Content/Resources) -> GDataDir (Data) 변환
+		size_t resPos = FbxPath.find(GResourceDir);
+		if (resPos != FString::npos)
+		{
+			FbxPath = FbxPath.substr(0, resPos) + GDataDir + FbxPath.substr(resPos + GResourceDir.length());
+		}
+
+		// .uskel -> .fbx 변환
+		size_t extPos = FbxPath.rfind(".uskel");
+		if (extPos != FString::npos)
+		{
+			FbxPath = FbxPath.substr(0, extPos) + ".fbx";
+		}
+
 		FbxLoader.LoadFromCacheToMemory(FbxPath);
 	}
 
 	RESOURCE.SetSkeletalMeshs();
 
-	UE_LOG("UFbxLoader::Preload: Completed! Processed %zu .fbx files from %s", FbxFilePaths.Num(), WideToUTF8(DataDir.wstring()).c_str());
+	UE_LOG("UFbxLoader::Preload: Completed! Loaded %zu cached files from %s", SkelCacheFilePaths.Num(), WideToUTF8(ContentDir.wstring()).c_str());
 }
 
 
